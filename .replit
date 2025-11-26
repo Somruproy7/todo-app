@@ -18,10 +18,6 @@ externalPort = 80
 localPort = 33059
 externalPort = 3001
 
-[[ports]]
-localPort = 42905
-externalPort = 3000
-
 [env]
 PORT = "5000"
 
@@ -49,4 +45,4 @@ waitForPort = 5000
 [userenv]
 
 [userenv.shared]
-MONGODB_URI = "mongodb+srv://somruproy4636new:R7HxCMQNISSaZZuQ@cluster0.eehur.mongodb.net/?appName=Cluster0"
+MONGODB_URI = "mongodb+srv://somruproy4636new:R7HxCMQNISSaZZuQ@cluster0.eehur.mongodb.net/mydb?appName=Cluster0"
