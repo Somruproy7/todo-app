@@ -1,37 +1,80 @@
-import { type User, type InsertUser } from "@shared/schema";
+import { type Task, type InsertTask, type UpdateTask } from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
-
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getTasks(date?: string): Promise<Task[]>;
+  getTask(id: string): Promise<Task | undefined>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: string, updates: UpdateTask): Promise<Task | undefined>;
+  deleteTask(id: string): Promise<boolean>;
+  getWeeklyStats(startDate: string, endDate: string): Promise<{ completed: number; pending: number; total: number }>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private tasks: Map<string, Task>;
 
   constructor() {
-    this.users = new Map();
+    this.tasks = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getTasks(date?: string): Promise<Task[]> {
+    const allTasks = Array.from(this.tasks.values());
+    if (date) {
+      return allTasks.filter((task) => task.date === date);
+    }
+    return allTasks;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async getTask(id: string): Promise<Task | undefined> {
+    return this.tasks.get(id);
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createTask(insertTask: InsertTask): Promise<Task> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const task: Task = {
+      id,
+      title: insertTask.title,
+      description: insertTask.description || "",
+      date: insertTask.date,
+      startTime: insertTask.startTime,
+      endTime: insertTask.endTime,
+      completed: insertTask.completed ?? false,
+    };
+    this.tasks.set(id, task);
+    return task;
+  }
+
+  async updateTask(id: string, updates: UpdateTask): Promise<Task | undefined> {
+    const task = this.tasks.get(id);
+    if (!task) return undefined;
+
+    const updatedTask: Task = {
+      ...task,
+      ...updates,
+    };
+
+    this.tasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async deleteTask(id: string): Promise<boolean> {
+    return this.tasks.delete(id);
+  }
+
+  async getWeeklyStats(startDate: string, endDate: string): Promise<{ completed: number; pending: number; total: number }> {
+    const allTasks = Array.from(this.tasks.values());
+    const weekTasks = allTasks.filter((task) => {
+      return task.date >= startDate && task.date <= endDate;
+    });
+
+    const completed = weekTasks.filter((t) => t.completed).length;
+    const pending = weekTasks.filter((t) => !t.completed).length;
+
+    return {
+      completed,
+      pending,
+      total: weekTasks.length,
+    };
   }
 }
 
