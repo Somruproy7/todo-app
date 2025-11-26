@@ -11,7 +11,7 @@ interface TaskListProps {
   onEditTask: (taskId: string) => void;
 }
 
-export function TaskList({ selectedDate, searchQuery, onEditTask }: TaskListProps) {
+export default function TaskList({ selectedDate, searchQuery, onEditTask }: TaskListProps) {
   const dateString = format(selectedDate, "yyyy-MM-dd");
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
@@ -97,3 +97,5 @@ export function TaskList({ selectedDate, searchQuery, onEditTask }: TaskListProp
     </div>
   );
 }
+
+export { TaskList };

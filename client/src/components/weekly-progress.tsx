@@ -8,7 +8,7 @@ interface WeeklyProgressProps {
   selectedDate: Date;
 }
 
-export function WeeklyProgress({ selectedDate }: WeeklyProgressProps) {
+export default function WeeklyProgress({ selectedDate }: WeeklyProgressProps) {
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 });
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 0 });
 
@@ -64,3 +64,5 @@ export function WeeklyProgress({ selectedDate }: WeeklyProgressProps) {
     </div>
   );
 }
+
+export { WeeklyProgress };

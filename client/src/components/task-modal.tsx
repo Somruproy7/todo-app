@@ -34,7 +34,7 @@ interface TaskModalProps {
   editingTaskId?: string | null;
 }
 
-export function TaskModal({
+export default function TaskModal({
   open,
   onOpenChange,
   defaultDate,
@@ -254,3 +254,5 @@ export function TaskModal({
     </Dialog>
   );
 }
+
+export { TaskModal };

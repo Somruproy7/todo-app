@@ -45,3 +45,5 @@ export function WeeklyCalendar({ selectedDate, onSelectDate }: WeeklyCalendarPro
     </div>
   );
 }
+
+export { WeeklyCalendar };
