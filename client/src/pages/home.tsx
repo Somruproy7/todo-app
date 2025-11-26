@@ -90,7 +90,7 @@ export default function Home() {
       </main>
 
       <Button
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full shadow-lg"
         size="icon"
         onClick={() => setIsTaskModalOpen(true)}
         data-testid="button-add-task"
