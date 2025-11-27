@@ -1,6 +1,8 @@
 import { type Task, type InsertTask, type UpdateTask } from "@shared/schema";
 import { randomUUID } from "crypto";
-import mongoose, { Schema, Document, connect } from "mongoose";
+import mongoose, { Schema, Document, connect, Types } from "mongoose";
+
+type ObjectId = Types.ObjectId;
 
 export interface IStorage {
   getTasks(date?: string): Promise<Task[]>;
@@ -12,7 +14,7 @@ export interface IStorage {
 }
 
 interface ITaskDocument extends Document {
-  _id: string;
+  _id: ObjectId;
   title: string;
   description: string;
   date: string;
@@ -22,7 +24,7 @@ interface ITaskDocument extends Document {
 }
 
 const taskSchema = new Schema<ITaskDocument>({
-  _id: { type: String, default: () => randomUUID() },
+  _id: { type: Schema.Types.ObjectId, default: () => new Types.ObjectId() },
   title: { type: String, required: true },
   description: { type: String, default: "" },
   date: { type: String, required: true },
@@ -37,17 +39,33 @@ export class MongoDBStorage implements IStorage {
   private initialized = false;
 
   async initialize() {
-    if (this.initialized) return;
+    if (this.initialized) {
+      console.log("✅ MongoDB already initialized");
+      return;
+    }
 
     try {
       const mongoUri = process.env.MONGODB_URI;
+      console.log("🔌 Connecting to MongoDB...");
+      console.log("📡 Connection string:", mongoUri ? "[HIDDEN FOR SECURITY]" : "NOT SET");
+      
       if (!mongoUri) {
-        throw new Error("MONGODB_URI environment variable is not set");
+        throw new Error("❌ MONGODB_URI environment variable is not set");
       }
 
-      await connect(mongoUri);
+      await connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000, // 5 seconds timeout for initial connection
+      });
+      
       this.initialized = true;
       console.log("✅ MongoDB connected successfully");
+      
+      // Test the connection
+      if (!mongoose.connection.db) {
+        throw new Error('MongoDB connection failed: Database instance is not available');
+      }
+      const collections = await mongoose.connection.db.listCollections().toArray();
+      console.log("📂 Available collections:", collections.map(c => c.name));
     } catch (error) {
       console.error("❌ MongoDB connection error:", error);
       throw error;
@@ -58,9 +76,13 @@ export class MongoDBStorage implements IStorage {
     await this.initialize();
     try {
       const query = date ? { date } : {};
+      console.log("🔍 Fetching tasks with query:", JSON.stringify(query));
+      
       const tasks = await TaskModel.find(query).lean();
-      return tasks.map((doc: any) => ({
-        id: doc._id,
+      console.log(`📊 Found ${tasks.length} tasks`);
+      
+      const result = tasks.map((doc: any) => ({
+        id: doc._id.toString(),
         title: doc.title,
         description: doc.description || "",
         date: doc.date,
@@ -68,6 +90,9 @@ export class MongoDBStorage implements IStorage {
         endTime: doc.endTime,
         completed: doc.completed,
       }));
+      
+      console.log("📤 Returning tasks:", JSON.stringify(result, null, 2));
+      return result;
     } catch (error) {
       console.error("Error fetching tasks:", error);
       return [];
@@ -80,7 +105,7 @@ export class MongoDBStorage implements IStorage {
       const doc = await TaskModel.findById(id).lean();
       if (!doc) return undefined;
       return {
-        id: doc._id,
+        id: doc._id.toString(),
         title: doc.title,
         description: doc.description || "",
         date: doc.date,
@@ -95,28 +120,37 @@ export class MongoDBStorage implements IStorage {
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
+    console.log("📝 Creating new task with data:", JSON.stringify(insertTask, null, 2));
     await this.initialize();
-    const taskId = randomUUID();
-    const task = new TaskModel({
-      _id: taskId,
-      title: insertTask.title,
-      description: insertTask.description || "",
-      date: insertTask.date,
-      startTime: insertTask.startTime,
-      endTime: insertTask.endTime,
-      completed: insertTask.completed ?? false,
-    });
-
-    await task.save();
-    return {
-      id: taskId,
-      title: insertTask.title,
-      description: insertTask.description || "",
-      date: insertTask.date,
-      startTime: insertTask.startTime,
-      endTime: insertTask.endTime,
-      completed: insertTask.completed ?? false,
-    };
+    
+    try {
+      const task = new TaskModel({
+        ...insertTask,
+        _id: new Types.ObjectId(),
+        description: insertTask.description || "",
+        completed: insertTask.completed ?? false
+      });
+      
+      console.log("💾 Saving task to database...");
+      const savedTask = await task.save();
+      console.log("✅ Task saved successfully:", savedTask);
+      
+      const result = {
+        id: savedTask._id.toString(),
+        title: savedTask.title,
+        description: savedTask.description || "",
+        date: savedTask.date,
+        startTime: savedTask.startTime,
+        endTime: savedTask.endTime,
+        completed: savedTask.completed,
+      };
+      
+      console.log("📤 Returning created task:", JSON.stringify(result, null, 2));
+      return result;
+    } catch (error) {
+      console.error("❌ Error creating task:", error);
+      throw error;
+    }
   }
 
   async updateTask(id: string, updates: UpdateTask): Promise<Task | undefined> {
@@ -130,7 +164,7 @@ export class MongoDBStorage implements IStorage {
       if (!updatedDoc) return undefined;
 
       return {
-        id: updatedDoc._id,
+        id: updatedDoc._id.toString(),
         title: updatedDoc.title,
         description: updatedDoc.description || "",
         date: updatedDoc.date,
@@ -181,3 +215,4 @@ export class MongoDBStorage implements IStorage {
 }
 
 export const storage = new MongoDBStorage();
+  
