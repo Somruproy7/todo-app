@@ -2,6 +2,20 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { config } from 'dotenv';
+import path from 'path';
+
+// Load environment variables from .env file
+const envPath = path.resolve(process.cwd(), 'config', '.env');
+const result = config({ path: envPath });
+
+if (result.error) {
+  console.error('Error loading .env file:', result.error);
+  process.exit(1);
+}
+
+console.log('Environment variables loaded successfully');
+console.log('MongoDB URI:', process.env.MONGODB_URI ? '[HIDDEN FOR SECURITY]' : 'NOT FOUND');
 
 const app = express();
 const httpServer = createServer(app);
@@ -12,15 +26,26 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
+// Parse JSON bodies
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buf) => {
+    try {
+      JSON.parse(buf.toString());
       req.rawBody = buf;
-    },
-  }),
-);
+    } catch (e) {
+      console.error('Error parsing JSON body:', e);
+      throw new Error('Invalid JSON');
+    }
+  }
+}));
 
-app.use(express.urlencoded({ extended: false }));
+// Parse URL-encoded bodies
+app.use(express.urlencoded({ 
+  extended: true,
+  limit: '10mb',
+  parameterLimit: 10000
+}));
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
